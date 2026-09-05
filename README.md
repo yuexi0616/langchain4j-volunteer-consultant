@@ -164,7 +164,3 @@ GET /chat?memoryId=demo-user&message=我是山东考生，580分，想学计算�
 ```bash
 mvn test
 ```
-
-## 简历描述参考
-
-基于 Spring Boot 和 LangChain4j 实现高考志愿填报 AI 顾问，接入通义千问模型，支持流式对话、Redis 多轮记忆、Redis 向量库 RAG、本地 PDF/Markdown 知识库检索、Tavily 联网搜索和预约信息工具调用，完整实践了 Java 后端接入大模型应用的核心链路。
