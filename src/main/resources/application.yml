@@ -1,0 +1,54 @@
+langchain4j:
+  open-ai:
+    chat-model:
+      base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+      api-key: ${ALI_API_KEY:}
+      model-name: qwen-plus
+      log-requests: ${AI_LOG_REQUESTS:false}
+      log-responses: ${AI_LOG_RESPONSES:false}
+
+    streaming-chat-model:
+      base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+      api-key: ${ALI_API_KEY:}
+      model-name: qwen-plus
+      log-requests: ${AI_LOG_REQUESTS:false}
+      log-responses: ${AI_LOG_RESPONSES:false}
+
+    embedding-model:
+      base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+      api-key: ${ALI_API_KEY:}
+      model-name: text-embedding-v3
+      log-requests: ${AI_LOG_REQUESTS:false}
+      log-responses: ${AI_LOG_RESPONSES:false}
+      max-segments-per-batch: 10
+
+  community:
+    redis:
+      port: 6379
+      host: localhost
+
+logging:
+  level:
+    dev.langchain4j: debug
+
+spring:
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${MYSQL_URL:jdbc:mysql://localhost:3306/langchain4jstudy?serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true}
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD:}
+
+# 驼峰命名
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
+
+# Tavily 联网搜索引擎配置（申请地址：https://app.tavily.com，免费额度 1000 次/月）
+tavily:
+  api-key: ${TAVILY_API_KEY:}   # 通过环境变量 TAVILY_API_KEY 注入，留空则联网功能不启用
+  max-results: 5

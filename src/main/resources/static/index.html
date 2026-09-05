@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="志愿填报 AI 顾问接口联调页" />
+  <title>志愿填报 AI 顾问</title>
+  <style>
+    :root {
+      --ink: #18252f;
+      --muted: #667784;
+      --line: #dce5e7;
+      --canvas: #f4f7f5;
+      --panel: rgba(255, 255, 255, .88);
+      --primary: #0b766e;
+      --primary-dark: #075e58;
+      --assistant: #edf5f2;
+      --shadow: 0 18px 50px rgba(23, 57, 59, .12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      color: var(--ink);
+      font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+      background:
+        radial-gradient(circle at 8% 4%, rgba(140, 210, 181, .28), transparent 25rem),
+        radial-gradient(circle at 92% 88%, rgba(156, 204, 215, .30), transparent 27rem),
+        var(--canvas);
+    }
+
+    .app {
+      display: flex;
+      flex-direction: column;
+      width: min(960px, calc(100% - 32px));
+      height: min(820px, calc(100vh - 40px));
+      margin: 20px auto;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, .75);
+      border-radius: 24px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .logo {
+      display: grid;
+      width: 42px;
+      height: 42px;
+      place-items: center;
+      border-radius: 13px;
+      color: #fff;
+      font-size: 22px;
+      background: linear-gradient(135deg, #0e897e, #075e58);
+      box-shadow: 0 8px 18px rgba(11, 118, 110, .24);
+    }
+    h1 { margin: 0; font-size: 18px; letter-spacing: .02em; }
+    .subtitle { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+    .status { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12px; white-space: nowrap; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #44a56a; box-shadow: 0 0 0 4px rgba(68, 165, 106, .12); }
+    .status.error .status-dot { background: #d95b56; box-shadow: 0 0 0 4px rgba(217, 91, 86, .12); }
+    .header-actions { display: flex; align-items: center; gap: 14px; }
+    .new-chat {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 12px;
+      border: 1px solid #cfe1dc;
+      border-radius: 999px;
+      background: #f7fbfa;
+      color: #17685f;
+      font: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      transition: .18s ease;
+    }
+    .new-chat:hover { border-color: var(--primary); background: #e8f4f0; transform: translateY(-1px); }
+
+    main { flex: 1; overflow-y: auto; padding: 26px clamp(16px, 4vw, 42px); scroll-behavior: smooth; }
+    .welcome { max-width: 680px; margin: 20px auto 26px; text-align: center; }
+    .welcome h2 { margin: 0 0 10px; font-size: clamp(23px, 4vw, 31px); letter-spacing: -.03em; }
+    .welcome p { margin: 0; color: var(--muted); line-height: 1.7; font-size: 14px; }
+    .suggestions { display: flex; flex-wrap: wrap; justify-content: center; gap: 9px; margin-top: 20px; }
+    .suggestion {
+      border: 1px solid #cfe1dc;
+      border-radius: 999px;
+      padding: 8px 12px;
+      color: #17685f;
+      cursor: pointer;
+      font: inherit;
+      font-size: 13px;
+      background: #f7fbfa;
+      transition: .18s ease;
+    }
+    .suggestion:hover { border-color: var(--primary); background: #e8f4f0; transform: translateY(-1px); }
+    .messages { display: flex; flex-direction: column; gap: 18px; max-width: 760px; margin: 0 auto; }
+    .message { display: flex; gap: 10px; align-items: flex-start; }
+    .message.user { flex-direction: row-reverse; }
+    .avatar { display: grid; flex: 0 0 32px; width: 32px; height: 32px; place-items: center; border-radius: 10px; font-size: 15px; background: var(--assistant); }
+    .user .avatar { color: #fff; background: var(--primary); }
+    .bubble { max-width: min(620px, calc(100% - 42px)); padding: 12px 14px; border-radius: 4px 16px 16px; background: var(--assistant); line-height: 1.7; font-size: 14px; white-space: pre-wrap; word-break: break-word; }
+    .user .bubble { border-radius: 16px 4px 16px 16px; color: #fff; background: var(--primary); }
+    .typing::after { content: ""; display: inline-block; width: 5px; height: 1em; margin-left: 3px; vertical-align: -2px; background: var(--primary); animation: blink .9s steps(1) infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    .composer-wrap { padding: 14px 20px 18px; border-top: 1px solid var(--line); background: rgba(255, 255, 255, .65); }
+    form { display: flex; align-items: flex-end; gap: 10px; max-width: 760px; margin: 0 auto; padding: 9px 10px 9px 15px; border: 1px solid #cbd9d7; border-radius: 16px; background: #fff; transition: border-color .2s, box-shadow .2s; }
+    form:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(11, 118, 110, .12); }
+    textarea { flex: 1; min-height: 26px; max-height: 120px; padding: 3px 0; resize: none; outline: 0; border: 0; color: var(--ink); font: inherit; font-size: 14px; line-height: 1.55; background: transparent; }
+    textarea::placeholder { color: #98a6ad; }
+    .send {
+      display: grid;
+      width: 36px;
+      height: 36px;
+      place-items: center;
+      border: 0;
+      border-radius: 11px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 17px;
+      background: var(--primary);
+      transition: .18s ease;
+    }
+    .send:hover:not(:disabled) { background: var(--primary-dark); transform: translateY(-1px); }
+    .send:disabled { cursor: not-allowed; opacity: .48; }
+    .hint { max-width: 760px; margin: 7px auto 0; color: #8a979d; font-size: 11px; }
+
+    @media (max-width: 600px) {
+      .app { width: 100%; height: 100vh; margin: 0; border: 0; border-radius: 0; }
+      header { padding: 16px; }
+      .status span:last-child { display: none; }
+      main { padding-top: 12px; }
+      .composer-wrap { padding: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <section class="app" aria-label="志愿填报 AI 顾问">
+    <header>
+      <div class="brand">
+        <div class="logo" aria-hidden="true">⌘</div>
+        <div>
+          <h1>志愿填报 AI 顾问</h1>
+          <p class="subtitle">LangChain4j 流式对话测试页</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="newChatButton" class="new-chat" type="button" aria-label="开启新对话">＋ 新对话</button>
+        <div id="status" class="status" role="status"><i class="status-dot"></i><span>接口就绪</span></div>
+      </div>
+    </header>
+
+    <main id="chatPanel">
+      <div id="welcome" class="welcome">
+        <h2>你好，我是你的志愿填报助手</h2>
+        <p>输入你的分数、省份、选科和意向专业，我会通过当前后端的 <code>/chat</code> 接口为你解答。</p>
+        <div class="suggestions" aria-label="示例问题">
+          <button class="suggestion" type="button">我是山东考生，580 分能报哪些计算机专业？</button>
+          <button class="suggestion" type="button">冲稳保志愿应该如何安排？</button>
+          <button class="suggestion" type="button">人工智能专业的就业方向有哪些？</button>
+        </div>
+      </div>
+      <div id="messages" class="messages" aria-live="polite"></div>
+    </main>
+
+    <div class="composer-wrap">
+      <form id="chatForm">
+        <textarea id="messageInput" rows="1" maxlength="2000" placeholder="输入你的问题，Enter 发送，Shift + Enter 换行" aria-label="咨询问题"></textarea>
+        <button id="sendButton" class="send" type="submit" aria-label="发送消息">↑</button>
+      </form>
+      <p class="hint">对话记忆已持久化，刷新页面 AI 仍记得此前上下文；点击「新对话」可重置会话。回答由后端模型生成，仅用于课程功能测试。</p>
+    </div>
+  </section>
+
+  <script>
+    const chatPanel = document.getElementById('chatPanel');
+    const welcome = document.getElementById('welcome');
+    const messages = document.getElementById('messages');
+    const form = document.getElementById('chatForm');
+    const input = document.getElementById('messageInput');
+    const sendButton = document.getElementById('sendButton');
+    const status = document.getElementById('status');
+    const newChatButton = document.getElementById('newChatButton');
+    // 会话标识持久化到 localStorage，刷新/重开浏览器后仍沿用同一标识，
+    // 配合后端 Redis 持久化记忆，AI 可以“记住”此前的多轮对话上下文
+    const STORAGE_KEY = 'consultant.memoryId';
+    function generateMemoryId() {
+      return crypto.randomUUID?.() ?? `id-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    let memoryId = localStorage.getItem(STORAGE_KEY) || generateMemoryId();
+    localStorage.setItem(STORAGE_KEY, memoryId);
+    let isSending = false;
+
+    function startNewChat() {
+      if (isSending) return;
+      // 生成新的会话标识；旧会话记录会按后端 Redis 的 TTL 自动过期
+      memoryId = generateMemoryId();
+      localStorage.setItem(STORAGE_KEY, memoryId);
+      messages.innerHTML = '';
+      welcome.hidden = false;
+      input.value = '';
+      resizeInput();
+      setStatus('已开启新对话');
+      input.focus();
+    }
+
+    newChatButton.addEventListener('click', startNewChat);
+
+    function setStatus(text, isError = false) {
+      status.classList.toggle('error', isError);
+      status.lastElementChild.textContent = text;
+    }
+
+    function appendMessage(role, text = '') {
+      const message = document.createElement('article');
+      message.className = `message ${role}`;
+      const avatar = document.createElement('div');
+      avatar.className = 'avatar';
+      avatar.textContent = role === 'user' ? '我' : 'AI';
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.textContent = text;
+      message.append(avatar, bubble);
+      messages.appendChild(message);
+      return bubble;
+    }
+
+    function scrollToBottom() {
+      chatPanel.scrollTop = chatPanel.scrollHeight;
+    }
+
+    function resizeInput() {
+      input.style.height = 'auto';
+      input.style.height = `${Math.min(input.scrollHeight, 120)}px`;
+    }
+
+    async function sendMessage(content) {
+      const message = content.trim();
+      if (!message || isSending) return;
+      isSending = true;
+      sendButton.disabled = true;
+      welcome.hidden = true;
+      appendMessage('user', message);
+      input.value = '';
+      resizeInput();
+      const answer = appendMessage('assistant');
+      answer.classList.add('typing');
+      setStatus('正在生成…');
+      scrollToBottom();
+
+      try {
+        const response = await fetch(`/chat?memoryId=${encodeURIComponent(memoryId)}&message=${encodeURIComponent(message)}`, {
+          method: 'GET',
+          headers: { Accept: 'text/html;charset=utf-8' }
+        });
+        if (!response.ok) throw new Error(`请求失败（HTTP ${response.status}）`);
+        if (!response.body) throw new Error('浏览器不支持流式响应读取');
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          answer.textContent += decoder.decode(value, { stream: true });
+          scrollToBottom();
+        }
+        answer.textContent += decoder.decode();
+        if (!answer.textContent) answer.textContent = '后端没有返回内容。';
+        setStatus('接口就绪');
+      } catch (error) {
+        answer.textContent = `无法获取回答：${error.message}\n请确认 Spring Boot 服务已启动，并检查 /chat 接口配置。`;
+        setStatus('接口异常', true);
+      } finally {
+        answer.classList.remove('typing');
+        isSending = false;
+        sendButton.disabled = false;
+        input.focus();
+        scrollToBottom();
+      }
+    }
+
+    form.addEventListener('submit', event => {
+      event.preventDefault();
+      sendMessage(input.value);
+    });
+
+    input.addEventListener('input', resizeInput);
+    input.addEventListener('keydown', event => {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        form.requestSubmit();
+      }
+    });
+
+    document.querySelectorAll('.suggestion').forEach(button => {
+      button.addEventListener('click', () => sendMessage(button.textContent));
+    });
+  </script>
+</body>
+</html>
